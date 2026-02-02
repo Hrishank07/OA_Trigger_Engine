@@ -5,10 +5,15 @@ from app.models.job import Job
 
 class CsvExporter:
     @staticmethod
-    def export(normalized_jobs: List[NormalizedJob], original_jobs: List[Job], filename: str = "jobs_export.csv"):
+    def export_with_scores(
+        normalized_jobs: List[NormalizedJob], 
+        original_jobs: List[Job], 
+        scores: List[float],
+        recommendations: List[str],
+        filename: str = "jobs_export.csv"
+    ):
         """
-        Exports jobs to a CSV file.
-        Joins NormalizedJob data with original Job metadata (Title, Company, URL).
+        Exports jobs to a CSV file includes OTPM scores.
         """
         
         # Create a lookup for original jobs
@@ -17,22 +22,17 @@ class CsvExporter:
         headers = [
             "Company", "Role", "Location", 
             "Status", "Posted Text",
-            "OTPM Probability", # Placeholder
+            "OTPM Probability", "Recommendation",
             "Visa Sponsorship", "Experience (Years)", "Skills Found", 
             "URL"
         ]
         
         rows = []
-        for n_job in normalized_jobs:
+        for i, n_job in enumerate(normalized_jobs):
             orig = job_map.get(n_job.job_id)
             if not orig: continue
             
             # Determine Status (Fresh vs Repost)
-            # Logic:
-            # 1. Check raw text for "Reposted"
-            # 2. (Handled by caller/controller ideally, but we can do a simple check if we passed in context)
-            # For now, rely on "posted_text"
-            
             status = "Fresh"
             posted_text = orig.raw_data.get("posted_text", "")
             if "repost" in posted_text.lower():
@@ -44,7 +44,8 @@ class CsvExporter:
                 orig.location,
                 status,
                 posted_text,
-                "N/A", # OTPM not implemented yet
+                f"{scores[i]:.2f}",
+                recommendations[i],
                 n_job.visa_sponsorship,
                 n_job.experience_years,
                 ", ".join(n_job.keywords),
@@ -60,3 +61,10 @@ class CsvExporter:
             print(f"Successfully exported {len(rows)} jobs to {filename}")
         except Exception as e:
             print(f"Error exporting CSV: {e}")
+
+    @staticmethod
+    def export(normalized_jobs: List[NormalizedJob], original_jobs: List[Job], filename: str = "jobs_export.csv"):
+        # Legacy support or redirect
+        scores = [0.0] * len(normalized_jobs)
+        recs = ["N/A"] * len(normalized_jobs)
+        CsvExporter.export_with_scores(normalized_jobs, original_jobs, scores, recs, filename)

@@ -7,3 +7,6 @@ html2text
 pytest
 pytest-playwright
 fake-useragent
+pypdf
+pandas
+openpyxl

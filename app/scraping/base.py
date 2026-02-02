@@ -42,7 +42,13 @@ class BaseScraper(ABC):
         pass
 
     @abstractmethod
-    def search_jobs(self, query: str, location: str, limit: int = 10) -> List[Job]:
+    @abstractmethod
+    def search_jobs(self, query: str, location: str, limit: int = 10) -> tuple:
+        """
+        Searches for jobs matching criteria.
+        Returns: (List[Job], str_total_count)
+        """
+        pass
         """
         Searches for jobs matching criteria.
         """

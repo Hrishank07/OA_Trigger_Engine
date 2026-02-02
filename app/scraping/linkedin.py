@@ -129,10 +129,23 @@ class LinkedInScraper(BaseScraper):
             
             if filters:
                 # Time filter
-                if filters.get("time") == "24h":
-                    params.append("f_TPR=r86400")
-                elif filters.get("time") == "week":
-                     params.append("f_TPR=r604800")
+                t_filter = filters.get("time", "").lower()
+                if t_filter:
+                    if t_filter == "24h":
+                        params.append("f_TPR=r86400")
+                    elif t_filter == "week":
+                        params.append("f_TPR=r604800")
+                    elif t_filter == "month":
+                         params.append("f_TPR=r2592000")
+                    elif t_filter.endswith("h"):
+                        # Granular: 1h, 12h, etc.
+                        try:
+                            hours = int(t_filter[:-1])
+                            seconds = hours * 3600
+                            params.append(f"f_TPR=r{seconds}")
+                        except:
+                            # Fallback if parse fails
+                            pass
                      
                 # Experience filter
                 # 1=Internship, 2=Entry level, 3=Associate, 4=Mid-Senior, 5=Director, 6=Executive
@@ -151,6 +164,9 @@ class LinkedInScraper(BaseScraper):
                 
                 if exp_vals:
                     params.append(f"f_E={','.join(exp_vals)}")
+            
+            # Enforce "Most Recent" sort order
+            params.append("sortBy=DD")
 
             search_url = f"{base_url}?{'&'.join(params)}"
             print(f"URL: {search_url}")
@@ -175,8 +191,8 @@ class LinkedInScraper(BaseScraper):
                 page.wait_for_selector(".jobs-search__results-list li, ul.jobs-search__results-list", timeout=10000)
             except:
                 print("No results found or page structure changed.")
-                return []
-
+                return [], "0"
+ 
             # Dynamic Scroll Loop
             # We want to load enough jobs to satisfy 'limit'.
             # LinkedIn loads ~25 jobs per scroll usually.
@@ -246,6 +262,19 @@ class LinkedInScraper(BaseScraper):
                     if time_el.count():
                         posted_text = time_el.inner_text().strip()
                     
+                    # REPOST DETECTION V3: Broad Sweep
+                    # Check entire card text for "repost"
+                    card_text = card.inner_text().lower()
+                    
+                    is_repost = False
+                    if "repost" in card_text:
+                        is_repost = True
+                        if "repost" not in posted_text.lower():
+                             posted_text = f"{posted_text} (Reposted)" 
+                        elif not any(x in posted_text.lower() for x in ["repost", "ago"]):
+                             # If posted_text is empty or weird, just set it
+                             posted_text = "Reposted"
+
                     # Create placeholder job
                     jobs_found.append(Job(
                         id=url, 
@@ -262,10 +291,10 @@ class LinkedInScraper(BaseScraper):
                     print(f"Error parsing card {i}: {e}")
                     continue
 
-            return jobs_found
+            return jobs_found, total_jobs_text
 
         except Exception as e:
             print(f"Error during search: {e}")
-            return []
+            return [], "0"
         finally:
             page.close()
