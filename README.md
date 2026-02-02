@@ -1,121 +1,130 @@
 # OA Trigger Engine
 
-> **A local-first intelligence engine for job seekers.**  
-> Scrapes, normalizes, and analyzes job postings to estimate the probability of triggering an Online Assessment (OA).
+## Overview
 
-## 🚀 Overview
+**OA Trigger Engine** is a local-first analysis system designed to estimate the likelihood that a resume will trigger an **Online Assessment (OA)** during the initial stages of job screening.
 
-**OA Trigger Engine** is a technical tool designed to reverse-engineer the "black box" of initial recruiter screening. By scraping job board data and applying ATS-like normalization rules, it helps candidates identify high-probability opportunities where they are likely to pass the automated screening filter.
+The system scrapes publicly available job postings, normalizes them using **ATS-aligned heuristics**, and evaluates them against a candidate profile to produce an **OA Trigger Probability Metric (OTPM)**. The output is intended to help candidates prioritize applications where automated screening is most likely to advance them to the next stage.
 
-It is built with **Privacy** and **Stealth** in mind, running entirely locally on your machine.
-
----
-
-## 🏗️ Architecture
-
-The system follows a standard ETL (Extract, Transform, Load) pipeline:
-
-```mermaid
-graph LR
-    A[Scrape] -->|Raw HTML| B(Normalize)
-    B -->|Structured Data| C{OTPM Engine}
-    C -->|Probability Score| D[Recommendation]
-    D -->|CSV Export| E[User]
-```
-
-1.  **Scrape**: Headless browser (Playwright) collects job data from LinkedIn (public view).
-2.  **Normalize**: Regex & Heuristics extract structured fields (Skills, Experience, Visa Status).
-3.  **Analyze**: *[In Progress]* The OTPM (OA Trigger Probability Metric) calculates a score (0.0 - 1.0).
-4.  **Export**: Clean, actionable data is saved to CSV for manual review.
+The project is designed to run entirely on a local machine, with no mandatory cloud dependencies.
 
 ---
 
-## ✨ Key Features
+## Problem Statement
 
-### 🔍 Batch Search & Filtering
-- **Deep Search**: Scrapes hundreds of jobs based on keywords (e.g., "Software Engineer") and location.
-- **Advanced Filters**: Supports **"Past 24 Hours"**, **"Entry Level"**, and other LinkedIn filters via URL parameters.
-- **Scalable**: Dynamic scrolling logic handles pagination to fetch as many jobs as requested.
+Modern hiring pipelines rely heavily on automated systems:
 
-### 🛡️ Stealth & Robustness
-- **Anti-Ban Architecture**:
-    - **User-Agent Rotation**: Mimics different devices/browsers for every session.
-    - **Jitter**: Introduces random, human-like delays (2-5s) between actions.
-    - **Fail-Fast**: Aggressive timeouts (15s) prevent the scraper from hanging on broken pages.
+- Applicant Tracking Systems (ATS) apply hard thresholds on skills, experience, and keywords
+- Recruiters perform rapid, shallow resume reviews
+- Most rejections occur before any interview or human interaction
 
-### 🧠 Intelligent Normalization
-- **Skill Extraction**: Matches against a curated dictionary of tech stack keywords (Python, React, Ansible, Terraform, etc.).
-- **Experience Parsing**: regex-based extraction of years of experience (e.g., "3+ years", "5-7 years").
-- **Visa Signal Detection**: Scans for positive ("sponsorship") and negative ("US Citizen only") keywords.
-- **Repost Detection**: Identifying "Reposted" jobs vs "Fresh" opportunities.
+As a result, candidates lack visibility into which applications are worth pursuing.
+
+This project addresses the following question:
+
+> *Given a resume and a job posting, how likely is it that the application will trigger an Online Assessment or initial screening action?*
 
 ---
 
-## 🛠️ Tech Stack
+## System Architecture
+
+The system follows a standard extract–transform–analyze pipeline:
+
+Scrape → Normalize → OTPM Evaluation → Recommendation → Export
+
+
+### Pipeline Stages
+
+1. **Scrape**
+   - Collects job postings and full descriptions from job boards using headless browser automation.
+   - Focuses on publicly accessible job listings.
+
+2. **Normalize**
+   - Converts unstructured job descriptions into structured, ATS-style representations.
+   - Extracts required skills, experience thresholds, visa signals, seniority indicators, and other screening-relevant attributes.
+
+3. **OTPM Evaluation**
+   - Applies deterministic, threshold-aware logic to compare a normalized job against a normalized resume.
+   - Produces a probability estimate representing the likelihood of triggering an OA.
+
+4. **Recommendation**
+   - Translates the probability estimate and metadata into actionable guidance (e.g., apply, deprioritize, skip).
+
+5. **Export**
+   - Outputs results in CSV format for manual review and tracking.
+
+---
+
+## Core Metric: OTPM
+
+### OA Trigger Probability Metric (OTPM)
+
+OTPM estimates:
+
+P(OA triggered | resume, job, ATS logic + initial recruiter skim)
+
+
+Key characteristics:
+- Output range: `0.0 – 1.0`
+- Threshold-aware (mirrors ATS behavior rather than linear scoring)
+- Deterministic and explainable
+- Focused exclusively on **pre-interview screening**
+
+OTPM is **not**:
+- A job fit score
+- An interview success predictor
+- A resume quality metric
+
+---
+
+## Normalization Logic
+
+Normalization is intentionally rule-based and ATS-aligned.
+
+### Job Normalization Includes:
+- Required vs preferred skill extraction
+- Minimum experience parsing (e.g., “3+ years”, “5–7 years”)
+- Role family and seniority inference
+- Visa sponsorship signals
+- Entry-level vs experienced-role classification
+- Repost vs fresh posting detection
+
+### Resume Normalization Includes:
+- Experience bullet extraction
+- Skill and keyword indexing
+- Experience duration estimation
+- Title and role-family mapping
+- Parsing integrity checks
+
+---
+
+## Key Features
+
+### Job Scraping
+- Batch scraping by keyword and location
+- Support for time-based filters (e.g., past 24 hours)
+- Pagination and dynamic scrolling support
+- Public-view scraping only
+
+### Robustness and Safety
+- User-agent rotation
+- Randomized delays between actions
+- Aggressive timeouts to avoid hanging sessions
+- Designed for low-frequency, personal use
+
+### Output and Review
+- CSV-based output for transparency
+- Clear columns describing job attributes and screening signals
+- No automatic application submission
+
+---
+
+## Technology Stack
 
 - **Language**: Python 3.12+
 - **Browser Automation**: Playwright
 - **Data Modeling**: Pydantic
-- **Parsing**: Regex + Heuristics
-- **Output**: CSV
+- **Parsing**: Regex and heuristic rules
+- **Storage / Output**: CSV (local filesystem)
 
 ---
-
-## 📦 Installation
-
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/Hrishank07/OA_Trigger_Engine.git
-    cd OA_Trigger_Engine
-    ```
-
-2.  **Create a virtual environment**:
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
-    ```
-
-3.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    playwright install chromium
-    ```
-
----
-
-## ⚡ Usage
-
-### Batch Search Mode
-The main entry point is `run_batch.py`. It provides an interactive CLI.
-
-```bash
-python run_batch.py
-```
-
-**Interactive Prompts:**
-1.  **Keywords**: e.g., `Software Engineer`, `SRE`, `Data Scientist`.
-2.  **Location**: e.g., `Remote`, `San Francisco`, `United States`.
-3.  **Time Filter**: `24h` (Past 24 Hours) or `week`.
-4.  **Experience**: `entry`, `internship`, `associate`, etc.
-5.  **Limit**: Number of jobs to scrape (e.g., `50`).
-
-**Output:**
-- The script works visibly (headless=False) to ensure transparency.
-- Results are saved to `jobs_<Query_Name>.csv` in the project root.
-
-### CSV Columns
-| Column | Description |
-|--------|-------------|
-| **Company** | Employer name. |
-| **Role** | Job title. |
-| **Status** | `Fresh` or `Repost` (based on "Reposted" tag). |
-| **Visa Sponsorship** | `LIKELY`, `UNLIKELY`, or `UNCLEAR`. |
-| **Experience** | Minimum years of experience required. |
-| **Skills Found** | Comma-separated list of detected tech skills. |
-
----
-
-## ⚖️ Disclaimer
-
-This project is for **educational purposes only**. It helps users organize publicly available information.
-Please respect LinkedIn's Terms of Service and `robots.txt`. Do not use this tool for high-frequency or abusive scraping.
