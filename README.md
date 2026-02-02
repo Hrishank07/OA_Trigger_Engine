@@ -1,205 +1,121 @@
 # OA Trigger Engine
 
-## 📌 Overview
+> **A local-first intelligence engine for job seekers.**  
+> Scrapes, normalizes, and analyzes job postings to estimate the probability of triggering an Online Assessment (OA).
 
-**OA Trigger Engine** is a local-first system that emulates how modern **ATS (Applicant Tracking Systems)** and **initial recruiter screening** work, with one clear goal:
+## 🚀 Overview
 
-> **Estimate the probability that a given resume will trigger an Online Assessment (OA) for a specific job posting.**
+**OA Trigger Engine** is a technical tool designed to reverse-engineer the "black box" of initial recruiter screening. By scraping job board data and applying ATS-like normalization rules, it helps candidates identify high-probability opportunities where they are likely to pass the automated screening filter.
 
-Instead of generic “job fit” scores, this project focuses on the **earliest and most critical funnel stage** in modern hiring:  
-**getting past automated screening and triggering an OA or recruiter action.**
-
----
-
-## 🎯 Problem This Project Solves
-
-In today’s job market:
-
-- ATS systems filter resumes using **hard thresholds** (skills, experience, keywords)
-- Recruiters skim resumes in **5–8 seconds**
-- Most rejections happen **before any human interview**
-
-Job seekers waste time applying blindly.
-
-This project answers a more practical question:
-
-> *“Given my resume, which jobs am I most likely to get an OA from?”*
+It is built with **Privacy** and **Stealth** in mind, running entirely locally on your machine.
 
 ---
 
-## 🧠 Core Concept: OTPM
+## 🏗️ Architecture
 
-### OA Trigger Probability Metric (OTPM)
+The system follows a standard ETL (Extract, Transform, Load) pipeline:
 
-OTPM is the **core scoring function** of this system.
-
-It estimates:
-
+```mermaid
+graph LR
+    A[Scrape] -->|Raw HTML| B(Normalize)
+    B -->|Structured Data| C{OTPM Engine}
+    C -->|Probability Score| D[Recommendation]
+    D -->|CSV Export| E[User]
 ```
 
-P(OA triggered | resume, job, ATS logic + human skim)
+1.  **Scrape**: Headless browser (Playwright) collects job data from LinkedIn (public view).
+2.  **Normalize**: Regex & Heuristics extract structured fields (Skills, Experience, Visa Status).
+3.  **Analyze**: *[In Progress]* The OTPM (OA Trigger Probability Metric) calculates a score (0.0 - 1.0).
+4.  **Export**: Clean, actionable data is saved to CSV for manual review.
 
+---
+
+## ✨ Key Features
+
+### 🔍 Batch Search & Filtering
+- **Deep Search**: Scrapes hundreds of jobs based on keywords (e.g., "Software Engineer") and location.
+- **Advanced Filters**: Supports **"Past 24 Hours"**, **"Entry Level"**, and other LinkedIn filters via URL parameters.
+- **Scalable**: Dynamic scrolling logic handles pagination to fetch as many jobs as requested.
+
+### 🛡️ Stealth & Robustness
+- **Anti-Ban Architecture**:
+    - **User-Agent Rotation**: Mimics different devices/browsers for every session.
+    - **Jitter**: Introduces random, human-like delays (2-5s) between actions.
+    - **Fail-Fast**: Aggressive timeouts (15s) prevent the scraper from hanging on broken pages.
+
+### 🧠 Intelligent Normalization
+- **Skill Extraction**: Matches against a curated dictionary of tech stack keywords (Python, React, Ansible, Terraform, etc.).
+- **Experience Parsing**: regex-based extraction of years of experience (e.g., "3+ years", "5-7 years").
+- **Visa Signal Detection**: Scans for positive ("sponsorship") and negative ("US Citizen only") keywords.
+- **Repost Detection**: Identifying "Reposted" jobs vs "Fresh" opportunities.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Language**: Python 3.12+
+- **Browser Automation**: Playwright
+- **Data Modeling**: Pydantic
+- **Parsing**: Regex + Heuristics
+- **Output**: CSV
+
+---
+
+## 📦 Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/Hrishank07/OA_Trigger_Engine.git
+    cd OA_Trigger_Engine
+    ```
+
+2.  **Create a virtual environment**:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+
+3.  **Install dependencies**:
+    ```bash
+    pip install -r requirements.txt
+    playwright install chromium
+    ```
+
+---
+
+## ⚡ Usage
+
+### Batch Search Mode
+The main entry point is `run_batch.py`. It provides an interactive CLI.
+
+```bash
+python run_batch.py
 ```
 
-OTPM is:
-- **Probabilistic** (0.0 → 1.0)
-- **Threshold-aware** (mirrors ATS behavior)
-- **Explainable** (clear breakdown of why a job is recommended or skipped)
+**Interactive Prompts:**
+1.  **Keywords**: e.g., `Software Engineer`, `SRE`, `Data Scientist`.
+2.  **Location**: e.g., `Remote`, `San Francisco`, `United States`.
+3.  **Time Filter**: `24h` (Past 24 Hours) or `week`.
+4.  **Experience**: `entry`, `internship`, `associate`, etc.
+5.  **Limit**: Number of jobs to scrape (e.g., `50`).
 
-OTPM is **not**:
-- A job-fit score
-- An interview probability
-- A resume quality metric
+**Output:**
+- The script works visibly (headless=False) to ensure transparency.
+- Results are saved to `jobs_<Query_Name>.csv` in the project root.
 
----
-
-## 🔁 End-to-End Pipeline
-
-```
-
-SCRAPE → NORMALIZE → COMPARE (OTPM) → RECOMMEND
-
-```
-
-### 1. Scrape
-- Collect jobs opened recently from:
-  - LinkedIn
-  - Jobright
-  - Simplify
-- Extract full job descriptions and metadata
-
-### 2. Normalize (ATS-style)
-- Convert raw text into structured fields:
-  - Required skills
-  - Preferred skills
-  - Experience requirements
-  - Role family & seniority
-  - Visa / location signals
-  - New-grad vs experienced friendliness
-
-### 3. Compare (OTPM Engine)
-- Compare a normalized job against a normalized resume
-- Apply ATS-like thresholds for:
-  - Required skills
-  - Required experience
-- Incorporate human skim signals:
-  - Title alignment
-  - Stack salience in top bullets
-- Output OA trigger probability
-
-### 4. Recommend
-- Translate OTPM + metadata into clear actions:
-  - **STRONG APPLY**
-  - **APPLY**
-  - **LOW PRIORITY**
-  - **SKIP**
-- Include tags like:
-  - Visa sponsorship likelihood
-  - New-grad / experienced friendliness
-  - Risk flags
-
----
-
-## 🏗️ System Design Principles
-
-- **Local-first**: Runs on a student’s machine
-- **Free-first**: No paid cloud dependencies
-- **Deterministic by default**: Same input → same output
-- **Explainable**: Every score has a reason
-- **Extensible**: Learning, calibration, and auto-tailoring can be added later
-
----
-
-## 🧱 Project Structure
-
-```
-
-oa-trigger-engine/
-│
-├── app/
-│   ├── scraping/        # Job scrapers
-│   ├── normalization/   # ATS-style parsing & extraction
-│   ├── otpm/            # OA Trigger Probability Metric (core logic)
-│   ├── recommendation/  # Decision engine
-│   ├── models/          # Typed schemas (jobs, resume, results)
-│   ├── storage/         # SQLite persistence
-│   └── main.py          # Entry point
-│
-├── data/                # Local data storage (ignored by git)
-├── requirements.txt
-├── .env
-└── README.md
-
-````
-
----
-
-## 🧮 OTPM Signals (High-Level)
-
-OTPM is derived from five primary signals:
-
-1. **Required Skill Threshold** (ATS gate)
-2. **Required Experience Threshold** (ATS gate)
-3. **ATS Keyword Density** (parsing & automation)
-4. **Title / Role Family Match** (human skim)
-5. **Stack Salience in Top Resume Bullets** (human skim)
-
-Hard failures (e.g., missing skills, visa mismatch) sharply reduce probability.
-
----
-
-## 📤 Output Example
-
-```json
-{
-  "company": "Stripe",
-  "role": "Software Engineer II",
-  "oa_trigger_probability": 0.78,
-  "recommendation": "STRONG APPLY",
-  "visa_sponsorship": "LIKELY",
-  "experienced_friendly": true,
-  "summary": "Strong skill and experience match; clear backend alignment"
-}
-````
-
----
-
-## 🧑🎓 Target Users
-
-* Students and early-career engineers
-* International students navigating visa constraints
-* Anyone applying to high-volume tech roles with OAs
-
----
-
-## 🚫 What This Project Is Not
-
-* Not an auto-apply bot (yet)
-* Not a resume generator
-* Not a recruiter replacement
-* Not a guarantee of interviews
-
-This is a **decision-support system**, not a magic button.
-
----
-
-## 🛣️ Future Extensions
-
-* Outcome-based calibration (learn from OA results)
-* Company-specific ATS heuristics
-* Resume keyword injection / tailoring
-* Auto-apply integration
-* Simple web dashboard
+### CSV Columns
+| Column | Description |
+|--------|-------------|
+| **Company** | Employer name. |
+| **Role** | Job title. |
+| **Status** | `Fresh` or `Repost` (based on "Reposted" tag). |
+| **Visa Sponsorship** | `LIKELY`, `UNLIKELY`, or `UNCLEAR`. |
+| **Experience** | Minimum years of experience required. |
+| **Skills Found** | Comma-separated list of detected tech skills. |
 
 ---
 
 ## ⚖️ Disclaimer
 
-This project is for **educational and personal use only**.
-It does not scrape or interact with platforms in ways intended to bypass security controls.
-
----
-
-## 🧠 One-Line Summary
-
-> **OA Trigger Engine helps you apply smarter by estimating which jobs are most likely to give you an Online Assessment.**
+This project is for **educational purposes only**. It helps users organize publicly available information.
+Please respect LinkedIn's Terms of Service and `robots.txt`. Do not use this tool for high-frequency or abusive scraping.
